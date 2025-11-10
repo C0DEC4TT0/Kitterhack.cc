@@ -1,0 +1,41 @@
+{
+	"schemaVersion": 1,
+	"id": "kitterhack",
+	"version": "${version}",
+	"name": "Kitterhack",
+	"description": "Linux/Android exclusive anarchy hvh client",
+	"authors": [
+		"1CatOnCrack and Your Mom"
+	],
+	"contact": {
+		"homepage": "https://discord.gg/vhY8DF77Kh",
+		"sources": "https://github.com/C0DEC4TT0/Kitterhack.cc"
+	},
+	"license": "GNU General Public License v3.0",
+	"icon": "assets/kitterhack/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.codecatto.kitterhack.Kitterhack"
+		],
+		"client": [
+			"com.codecatto.kitterhack.KitterhackClient"
+		]
+	},
+	"mixins": [
+		"kitterhack.mixins.json",
+		{
+			"config": "kitterhack.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.17.3",
+		"minecraft": "~1.21.10",
+		"java": ">=21",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}
