@@ -1,10 +1,19 @@
 package com.codecatto.kitterhack;
 
+import com.codecatto.kitterhack.util.StringEncryptor;
 import java.io.*;
 import java.nio.file.*;
 
 public class PlatformCheck {
-    private static final String LIB_NAME = "kitterhack_platform";
+    // Encrypted strings - not obvious what they are
+    private static final String ENC_LIB_NAME = "JwAWHwwGHAQRAyoKHysVHgkVBQQ5BA=="; // "libkitterhack_platform"
+    private static final String ENC_ERROR_MSG = "AAAAAAAAAAAAAGUKF1QMAUgODQcySQcBFQIHExcOL0kbGkU+AQ8WE2sIGhBFMwYFEQQiDVQECRMcBwwZJhpa"; // Error message
+    private static final String ENC_PROC_VERSION = "ZBkGGwZdHgQRGCIGGg=="; // "/proc/version"
+    private static final String ENC_SYS_KERNEL = "ZBoNB0oZDRMNDic="; // "/sys/kernel"
+    private static final String ENC_NOT_FOUND = "BQgAHRMXSA0KCTkIBg1FHAcVQw0kHBoQ"; // "Native library not found"
+    private static final String ENC_LOAD_FAILED = "DQgdGAAWSBUMSycGFRBFHAkVCh0uSRgdBwAJExo="; // "Failed to load native library"
+    private static final String ENC_INITIALIZED = "AAAAAAAAAAAAAGUKF1QMHAEVCgonAA4RAVM="; // "Kitterhack.cc initialized!"
+
     private static boolean initialized = false;
 
     static {
@@ -15,7 +24,7 @@ public class PlatformCheck {
             }
             initialized = true;
         } catch (UnsatisfiedLinkError e) {
-            System.err.println("Kitterhack.cc is only supported on Linux and Android platforms.");
+            System.err.println(StringEncryptor.decrypt(ENC_ERROR_MSG));
             corruptAndExit();
         } catch (Exception e) {
             e.printStackTrace();
@@ -25,10 +34,8 @@ public class PlatformCheck {
 
     private static void loadNativeLibrary() {
         try {
-            // Try to load from java.library.path first
-            System.loadLibrary(LIB_NAME);
+            System.loadLibrary(StringEncryptor.decrypt(ENC_LIB_NAME));
         } catch (UnsatisfiedLinkError e) {
-            // Extract from JAR and load
             loadFromJar();
         }
     }
@@ -38,46 +45,43 @@ public class PlatformCheck {
         String arch = System.getProperty("os.arch").toLowerCase();
 
         String libraryPath;
+        String libName = StringEncryptor.decrypt(ENC_LIB_NAME) + ".so";
+
         if (os.contains("linux")) {
             if (arch.contains("aarch64") || arch.contains("arm")) {
-                libraryPath = "/native/linux/aarch64/libkitterhack_platform.so";
+                libraryPath = "/native/linux/aarch64/" + libName;
             } else {
-                libraryPath = "/native/linux/x86_64/libkitterhack_platform.so";
+                libraryPath = "/native/linux/x86_64/" + libName;
             }
         } else if (os.contains("android")) {
-            libraryPath = "/native/android/" + arch + "/libkitterhack_platform.so";
+            libraryPath = "/native/android/" + arch + "/" + libName;
         } else {
-            throw new UnsatisfiedLinkError("Unsupported platform: " + os);
+            throw new UnsatisfiedLinkError(StringEncryptor.decrypt(ENC_NOT_FOUND));
         }
 
         try {
             InputStream in = PlatformCheck.class.getResourceAsStream(libraryPath);
             if (in == null) {
-                throw new UnsatisfiedLinkError("Native library not found: " + libraryPath);
+                throw new UnsatisfiedLinkError(StringEncryptor.decrypt(ENC_NOT_FOUND) + ": " + libraryPath);
             }
 
-            // Create temp file
-            File tempLib = File.createTempFile("libkitterhack_platform", ".so");
+            File tempLib = File.createTempFile(StringEncryptor.decrypt(ENC_LIB_NAME), ".so");
             tempLib.deleteOnExit();
 
-            // Copy to temp file
             Files.copy(in, tempLib.toPath(), StandardCopyOption.REPLACE_EXISTING);
             in.close();
 
-            // Load the library
             System.load(tempLib.getAbsolutePath());
         } catch (IOException e) {
-            throw new UnsatisfiedLinkError("Failed to load native library: " + e.getMessage());
+            throw new UnsatisfiedLinkError(StringEncryptor.decrypt(ENC_LOAD_FAILED) + ": " + e.getMessage());
         }
     }
 
-    // Native method declarations
     private static native boolean validatePlatform();
     private static native String getKernelVersion();
     private static native boolean checkProcFS();
 
     private static void corruptAndExit() {
-        // Make it annoying to bypass
         try {
             Thread.sleep(100);
         } catch (InterruptedException ignored) {}
@@ -90,7 +94,6 @@ public class PlatformCheck {
         }
     }
 
-    // Optional: Public methods for debugging (remove in production)
     public static String getSystemInfo() {
         if (!initialized) return "Invalid platform";
         return "Kernel: " + getKernelVersion() + " | ProcFS: " + checkProcFS();

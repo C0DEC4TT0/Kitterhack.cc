@@ -1,7 +1,18 @@
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.guardsquare:proguard-gradle:7.4.2'
+    }
+}
+
 plugins {
     id 'fabric-loom' version "${loom_version}"
     id 'maven-publish'
 }
+
+import proguard.gradle.ProGuardTask
 
 version = project.mod_version
 group = project.maven_group
@@ -88,6 +99,33 @@ jar {
 
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
+
+// ProGuard obfuscation task
+tasks.register('proguard', ProGuardTask) {
+    dependsOn 'remapJar'
+
+    configuration file('proguard-rules.pro')
+
+    // Input: the remapped JAR from Fabric Loom
+    injars "${buildDir}/libs/${project.archives_base_name}-${project.version}.jar"
+
+    // Output: obfuscated JAR
+    outjars "${buildDir}/libs/${project.archives_base_name}-${project.version}-obfuscated.jar"
+
+    // Library JARs (Minecraft, Fabric, etc.)
+    libraryjars configurations.compileClasspath
+    libraryjars "${System.getProperty('java.home')}/jmods"
+
+    // Don't warn about missing classes from Minecraft/Fabric
+    dontwarn '**'
+
+    printmapping "${buildDir}/proguard/mapping.txt"
+    printseeds "${buildDir}/proguard/seeds.txt"
+    printusage "${buildDir}/proguard/usage.txt"
+}
+
+// Make build use the obfuscated JAR
+build.finalizedBy proguard
 
 // configure the maven publication
 publishing {
